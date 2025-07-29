@@ -7,6 +7,7 @@ import dataSource from './config/database.config';
 import { Logger } from '@nestjs/common';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
+import { SharedModule } from './modules/shared/shared.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -32,6 +33,7 @@ import { UsersModule } from './modules/users/users.module';
     }),
     AuthModule,
     UsersModule,
+    SharedModule,
   ],
   controllers: [AppController],
   providers: [AppService],

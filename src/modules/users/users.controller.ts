@@ -1,16 +1,23 @@
-import { Controller, Put, Post, Body, UseGuards, HttpStatus, HttpException, Req } from '@nestjs/common';
+import { Controller, Put, Post, Body, UseGuards, HttpStatus, HttpException, Req,
+    UseInterceptors, UploadedFile, Patch
+ } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBody,
   ApiBearerAuth,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { UserService } from './services/users.service';
 import { UpdateEmailDto } from './dto/updateEmail.dto';
 import { SuccessResponse } from 'src/common/dto/response.dto';
 import { ErrorResponse } from 'src/common/dto/response.dto';
 import { FirebaseAuthGuard } from 'src/common/guards/firebase.guard';
+import { CurrentUser } from 'src/decorator/getCurrentUser.decorator';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UpdateUserProfileWithFileDto } from './dto/updateUserProfile.dto';
+import { User } from './entities/user.entity';
 @ApiTags('Users')
 @ApiBearerAuth('firebase-auth')
 @Controller('users')
@@ -72,6 +79,38 @@ export class UsersController {
       updateEmailDto.newEmail,
     );
     return SuccessResponse.create(HttpStatus.OK,'Email updated successfully', sanitizedUser);
+  }
+
+  @Patch('/profile')
+  @UseInterceptors(FileInterceptor('picture'))
+  @ApiOperation({
+    summary: 'Update user profile',
+    description: 'Update user name and/or profile picture',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile updated successfully',
+    type: User,
+  })
+  @ApiResponse({ status: 400, description: 'Bad request' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Update user profile data',
+    type: UpdateUserProfileWithFileDto,
+  })
+  async updateProfile(
+    @CurrentUser() user: User,
+    @Body() updateData: UpdateUserProfileWithFileDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    try{
+      const res = await this.userService.updateProfile(user.firebaseId, updateData, file);
+      return SuccessResponse.create(HttpStatus.OK, "Profile is updated successfully!", res);
+    }catch(error){
+      throw new HttpException("Error while updating the profile ",HttpStatus.INTERNAL_SERVER_ERROR, error)
+    }
   }
   
 }

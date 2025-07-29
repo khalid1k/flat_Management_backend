@@ -8,8 +8,9 @@ import { FirebaseConfig } from 'src/config/firebase.config';
 import { SendGridService } from './services/sendGrid.service';
 import { OtpService } from './services/otp.service';
 import { Otp } from './entities/otp.entity';
+import { SharedModule } from '../shared/shared.module';
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Otp]), UsersModule],
+  imports: [TypeOrmModule.forFeature([User, Otp]), UsersModule, SharedModule],
   providers: [AuthService, FirebaseConfig, OtpService, SendGridService],
   controllers: [AuthController],
 })

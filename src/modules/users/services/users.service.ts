@@ -4,6 +4,8 @@ import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from '../dto/createUser.dto';
 import { FirebaseConfig } from 'src/config/firebase.config';
+import { AwsS3Service } from 'src/modules/shared/aws/awsS3.Service';
+import { UpdateUserProfileWithFileDto } from '../dto/updateUserProfile.dto';
 
 @Injectable()
 export class UserService {
@@ -11,6 +13,7 @@ export class UserService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private firebaseConfig: FirebaseConfig,
+    private awsS3Service: AwsS3Service,
   ) {}
 
   async createOrUpdateUser(userData: CreateUserDto) {
@@ -115,4 +118,34 @@ export class UserService {
     return user;
   }
 
+
+  async updateProfile(
+    firebaseId: string,
+    updateData: UpdateUserProfileWithFileDto,
+    file?: Express.Multer.File,
+  ): Promise<User> {
+    const user = await this.findByFirebaseId(firebaseId);
+    if(!user){
+      throw new HttpException("User not found against this firebaseId!", HttpStatus.NOT_FOUND)
+    }
+
+    if (updateData.name) {
+      user.name = updateData.name;
+    }
+
+    if (file) {
+      try {
+        if (user.picture) {
+          await this.awsS3Service.deleteFile(user.picture).catch(() => {
+            console.error('Failed to delete old profile picture');
+          });
+        }
+        user.picture = await this.awsS3Service.uploadFile(file);
+      } catch (error) {
+        throw new HttpException('Failed to upload profile picture', HttpStatus.INTERNAL_SERVER_ERROR, error);
+      }
+    }
+
+    return this.userRepository.save(user);
+  }
 }
