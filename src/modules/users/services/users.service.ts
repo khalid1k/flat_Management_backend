@@ -6,6 +6,7 @@ import { CreateUserDto } from '../dto/createUser.dto';
 import { FirebaseConfig } from 'src/config/firebase.config';
 import { AwsS3Service } from 'src/modules/shared/aws/awsS3.Service';
 import { UpdateUserProfileWithFileDto } from '../dto/updateUserProfile.dto';
+import { Role } from '../../../common/enums/roles.enum';
 
 @Injectable()
 export class UserService {
@@ -147,5 +148,33 @@ export class UserService {
     }
 
     return this.userRepository.save(user);
+  }
+
+  async findAllAdmins(): Promise<User[]> {
+    return this.userRepository.find({ 
+      where: { role: Role.Admin },
+      select: ['id', 'firebaseId', 'fcmToken', 'name']
+    });
+  }
+
+  async updateFcmToken(userId: string, fcmToken: string): Promise<User> {
+    const user = await this.userRepository.findOne({ where: { firebaseId: userId } });
+    if (!user) {
+      throw new Error('User not found');
+    }
+    user.fcmToken = fcmToken;
+    return this.userRepository.save(user);
+  }
+
+  async getUserWithNotifications(userId: string): Promise<User | null> {
+    return this.userRepository.findOne({
+      where: { firebaseId: userId },
+      relations: ['notifications'],
+      order: {
+        notifications: {
+          createdAt: 'DESC'
+        }
+      }
+    });
   }
 }
